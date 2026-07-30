@@ -3,7 +3,8 @@ name: Release-Binaries
 # Release per "Run workflow" mit tag-Input: baut die Backend-Binaries
 # (Cross-Compile vom Linux-Runner) und hängt sie an ein GitHub-Release. Das Tag
 # legt action-gh-release serverseitig an (der Git-Proxy erlaubt keine Tag-Pushes),
-# daher kein push-tags-Trigger.
+# daher kein push-tags-Trigger. Zum Schluss wird docker.yml aufgerufen, damit das
+# Image dieselben Semver-Tags bekommt.
 
 on:
   workflow_dispatch:
@@ -74,3 +75,15 @@ jobs:
           files: dist/**/*
           fail_on_unmatched_files: true
           generate_release_notes: true
+
+  # Image mit Semver-Tags nachziehen. Der Tag-Push oben löst docker.yml nicht aus
+  # (GITHUB_TOKEN-Events starten keine Workflow-Runs), daher hier explizit aufrufen.
+  image:
+    if: inputs.tag != ''
+    needs: [release]
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/docker.yml
+    with:
+      version: ${{ inputs.tag }}
