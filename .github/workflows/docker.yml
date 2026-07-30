@@ -11,9 +11,17 @@ on:
       - "internal/**"
       - "addin/**"
       - ".github/workflows/docker.yml"
-    tags:
-      - "v*"
   workflow_dispatch:
+  # Von release.yml aufgerufen, um das Image zusätzlich mit Semver-Tags zu versehen.
+  # Kein tags-Trigger: das Release-Tag legt action-gh-release mit dem GITHUB_TOKEN an,
+  # und Events aus dem GITHUB_TOKEN starten keine neuen Workflow-Runs.
+  workflow_call:
+    inputs:
+      version:
+        description: "Release-Tag (z. B. v2.2.0) für die Semver-Image-Tags"
+        type: string
+        required: false
+        default: ""
 
 env:
   IMAGE: ghcr.io/${{ github.repository }}   # ghcr.io/phischmi/kilometrix
@@ -45,9 +53,10 @@ jobs:
           tags: |
             # latest bei jedem Merge auf main
             type=raw,value=latest,enable={{is_default_branch}}
-            # Semver-Tags bei v*-Releases: v2.0.1 → 2.0.1 + 2.0 + 2
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
+            # Semver-Tags beim Release-Aufruf: v2.2.0 → 2.2.0 + 2.2
+            # (ohne version-Input greift semver nicht → nur latest, wie bisher)
+            type=semver,pattern={{version}},value=${{ inputs.version }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ inputs.version }}
 
       - name: Build & push
         uses: docker/build-push-action@v6
