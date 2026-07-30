@@ -90,7 +90,8 @@ PLZ-Tabelle vorhanden ist. Auth ist lokal aus. Optionen: `kilometrix serve -h`.
 
 Kilometrix wird **direkt in Excel** bedient: ein Task Pane liest die Eingaben aus dem aktiven
 Blatt, ruft das Backend und schreibt `distance_km, duration_min, status, snap_m` (und im
-Geocoding-Modus die hergeleiteten Koordinaten) in die Nachbarspalten. Cross-Platform (Windows/Mac),
+Geocoding-Modus die hergeleiteten Koordinaten) in die Nachbarspalten. Welche dieser Spalten
+geschrieben werden, ist in den Einstellungen (Zahnrad) abwählbar. Cross-Platform (Windows/Mac),
 vollständig offline. Das Add-in arbeitet **streamend in Blöcken** (2000 Zeilen): lesen →
 berechnen → zurückschreiben pro Block, damit der Speicher auch bei großen Blättern konstant bleibt.
 
