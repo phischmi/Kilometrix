@@ -1,16 +1,9 @@
 name: Build & Push Docker image
 
+# Das Image entsteht nur noch bei einem Release (Aufruf aus release.yml) oder von Hand —
+# kein Build bei jedem Merge auf main. `latest` zeigt damit auf den letzten Release-Stand,
+# nicht auf den Kopf von main; docker-compose.prod.yml zieht weiterhin `:latest`.
 on:
-  push:
-    branches: [main]
-    # Nur bauen, wenn das Backend-Image tatsächlich betroffen ist.
-    paths:
-      - "Dockerfile"
-      - "go.mod"
-      - "cmd/**"
-      - "internal/**"
-      - "addin/**"
-      - ".github/workflows/docker.yml"
   workflow_dispatch:
   # Von release.yml aufgerufen, um das Image zusätzlich mit Semver-Tags zu versehen.
   # Kein tags-Trigger: das Release-Tag legt action-gh-release mit dem GITHUB_TOKEN an,
@@ -51,7 +44,7 @@ jobs:
         with:
           images: ${{ env.IMAGE }}
           tags: |
-            # latest bei jedem Merge auf main
+            # latest nur von main (schützt vor Dispatch aus einem Feature-Branch)
             type=raw,value=latest,enable={{is_default_branch}}
             # Semver-Tags beim Release-Aufruf: v2.2.0 → 2.2.0 + 2.2
             # (ohne version-Input greift semver nicht → nur latest, wie bisher)
