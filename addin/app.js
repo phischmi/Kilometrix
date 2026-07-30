@@ -20,7 +20,7 @@
   const $ = (id) => document.getElementById(id);
   const state = { scope: "used", engineReady: false, authRequired: false, authed: false, ctx: null };
   const settings = {
-    cols: { distance: true, duration: true, status: true, snap: false },
+    cols: { coords: true, distance: true, duration: true, status: true, snap: false },
     durFormat: "min", // "min" | "hhmm"
     mode: "geo", // Default: "geo" (LKZ/PLZ → Zentroid) | "route" (fertige Koordinaten)
   };
@@ -101,7 +101,7 @@
     $("settingsDone").onclick = closeSettings;
     $("durMin").onclick = () => setDurFormat("min");
     $("durHhmm").onclick = () => setDurFormat("hhmm");
-    ["col_distance", "col_duration", "col_status", "col_snap"].forEach((id) => ($(id).onchange = readColsFromUI));
+    ["col_coords", "col_distance", "col_duration", "col_status", "col_snap"].forEach((id) => ($(id).onchange = readColsFromUI));
   }
 
   // ---------- Einstellungen ----------
@@ -114,6 +114,7 @@
         settings.mode = s.mode === "route" ? "route" : "geo"; // Default geo, nur explizit route respektieren
       }
     } catch {}
+    $("col_coords").checked = settings.cols.coords;
     $("col_distance").checked = settings.cols.distance;
     $("col_duration").checked = settings.cols.duration;
     $("col_status").checked = settings.cols.status;
@@ -124,6 +125,7 @@
   const saveSettings = () => { try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings)); } catch {} };
 
   function readColsFromUI() {
+    settings.cols.coords = $("col_coords").checked;
     settings.cols.distance = $("col_distance").checked;
     settings.cols.duration = $("col_duration").checked;
     settings.cols.status = $("col_status").checked;
@@ -156,8 +158,8 @@
   // Welche Ergebnis-Spalten geschrieben werden (Reihenfolge + Header + Formatierung)
   function outputSpec() {
     const spec = [];
-    // Im Geocoding-Modus die hergeleiteten Koordinaten sichtbar voranstellen.
-    if (settings.mode === "geo") {
+    // Im Geocoding-Modus die hergeleiteten Koordinaten sichtbar voranstellen (abwählbar).
+    if (settings.mode === "geo" && settings.cols.coords) {
       spec.push({ header: "origin_lat", val: (r) => numOrBlank(r.origin_lat) });
       spec.push({ header: "origin_lon", val: (r) => numOrBlank(r.origin_lon) });
       spec.push({ header: "dest_lat", val: (r) => numOrBlank(r.dest_lat) });
@@ -351,9 +353,8 @@
 
   function updateRunState() {
     const c = state.ctx;
-    // Im Geocoding-Modus entstehen immer Koordinatenspalten → es gibt stets eine Ausgabe.
     const anyCol =
-      settings.mode === "geo" ||
+      (settings.mode === "geo" && settings.cols.coords) ||
       settings.cols.distance || settings.cols.duration || settings.cols.status || settings.cols.snap;
     const ready =
       state.engineReady && c && c.dataRows > 0 && anyCol && targets().every((t) => $(t).value !== "");
