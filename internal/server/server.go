@@ -81,6 +81,7 @@ func (s *Server) Handler() http.Handler {
 	if s.mailer != nil {
 		// Token-Antrag: Startseite wird zum Formular; Freigabe per signiertem Link.
 		mux.HandleFunc("GET /{$}", s.handleRequestPage)
+		mux.HandleFunc("GET /logo.png", s.handleLogo)
 		mux.HandleFunc("POST /request-token", s.handleRequestToken)
 		mux.HandleFunc("GET /approve", s.handleApprovePage)
 		mux.HandleFunc("POST /approve", s.handleApprove)
