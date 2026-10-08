@@ -75,6 +75,13 @@ chmod o+rx data && chmod o+r data/plz_centroids.csv data/germany.osrm.*
 ohne DB) geschützt. Einzelne Tokens lassen sich nicht gezielt widerrufen — kurze TTL vergeben oder
 mit `AUTH_SECRET` **alle** rotieren (Secret neu setzen, App neu starten).
 
+**Token per Formular beantragen:** Ist SMTP konfiguriert (`SMTP_HOST`, `MAIL_FROM`, `ADMIN_EMAIL`,
+`PUBLIC_BASE_URL`, siehe `.env.example`), zeigt `/` ein Formular (Name + Mail). Der Antrag geht als
+Mail mit signiertem Freigabe-Link an `ADMIN_EMAIL`; der Link öffnet eine Bestätigungsseite (GET löst
+nichts aus), erst der Button sendet das Token (`TOKEN_DAYS`, Default 90) per Mail an den
+Antragsteller. Domains aus `ALLOWED_EMAIL_DOMAINS` erhalten das Token ohne Freigabe. Schutz: Honeypot,
+Rate-Limits (pro IP/Mail/gesamt, In-Memory), Eingabevalidierung. Es wird nichts gespeichert.
+
 ## Lokal starten (zu Testzwecken)
 
 ```bash

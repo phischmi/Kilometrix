@@ -9,9 +9,11 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/phischmi/kilometrix/internal/config"
 	"github.com/phischmi/kilometrix/internal/geocode"
+	"github.com/phischmi/kilometrix/internal/mail"
 	"github.com/phischmi/kilometrix/internal/routing"
 	"github.com/phischmi/kilometrix/internal/tokens"
 )
@@ -30,11 +32,17 @@ type Server struct {
 	workers     int
 	authEnabled bool
 	authSecret  string
+
+	// Token-Antrag (nur aktiv, wenn requestsEnabled; mailer != nil)
+	mailer     mail.Sender
+	limits     *requestLimits
+	approvedMu sync.Mutex
+	approved   map[string]bool
 }
 
 // New erzeugt einen Server. engine darf nil sein (dann meldet /route-batch 503).
 func New(s config.Settings, engine routing.Engine, engineErr string, geo *geocode.Geocoder) *Server {
-	return &Server{
+	srv := &Server{
 		settings:    s,
 		engine:      engine,
 		engineErr:   engineErr,
@@ -43,7 +51,13 @@ func New(s config.Settings, engine routing.Engine, engineErr string, geo *geocod
 		workers:     s.Workers,
 		authEnabled: s.AuthEnabled,
 		authSecret:  s.AuthSecret,
+		limits:      newRequestLimits(),
+		approved:    map[string]bool{},
 	}
+	if requestsEnabled(s) {
+		srv.mailer = mail.SMTP{Host: s.SMTPHost, Port: s.SMTPPort, User: s.SMTPUser, Pass: s.SMTPPass, From: s.MailFrom}
+	}
+	return srv
 }
 
 // Handler baut den Router (net/http ServeMux mit Methoden-Patterns).
@@ -64,9 +78,17 @@ func (s *Server) Handler() http.Handler {
 
 	// Seit Go 1.22 kann man Methode + Pfad als Muster angeben ("GET /health").
 	// {$} matcht nur den exakten Root-Pfad "/" — sonst kollidiert "GET /" mit "/addin/".
-	mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/addin/taskpane.html", http.StatusFound)
-	})
+	if s.mailer != nil {
+		// Token-Antrag: Startseite wird zum Formular; Freigabe per signiertem Link.
+		mux.HandleFunc("GET /{$}", s.handleRequestPage)
+		mux.HandleFunc("POST /request-token", s.handleRequestToken)
+		mux.HandleFunc("GET /approve", s.handleApprovePage)
+		mux.HandleFunc("POST /approve", s.handleApprove)
+	} else {
+		mux.HandleFunc("GET /{$}", func(w http.ResponseWriter, r *http.Request) {
+			http.Redirect(w, r, "/addin/taskpane.html", http.StatusFound)
+		})
+	}
 	// HandleFunc verknüpft ein Muster mit einer Handler-FUNKTION. Die Methoden
 	// s.handleHealth usw. passen auf die Signatur func(ResponseWriter, *Request).
 	mux.HandleFunc("GET /health", s.handleHealth)
