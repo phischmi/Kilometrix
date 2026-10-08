@@ -143,7 +143,13 @@ func securePage(w http.ResponseWriter) {
 	h.Set("Cache-Control", "no-store")
 	h.Set("X-Content-Type-Options", "nosniff")
 	h.Set("Referrer-Policy", "no-referrer")
-	h.Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'")
+	h.Set("Content-Security-Policy", "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; connect-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'")
+}
+
+func (s *Server) handleLogo(w http.ResponseWriter, _ *http.Request) {
+	w.Header().Set("Content-Type", "image/png")
+	w.Header().Set("Cache-Control", "public, max-age=86400")
+	_, _ = w.Write(logoPNG)
 }
 
 func (s *Server) handleRequestPage(w http.ResponseWriter, _ *http.Request) {
@@ -200,15 +206,24 @@ func (s *Server) handleRequestToken(w http.ResponseWriter, r *http.Request) {
 func (s *Server) sendApprovalRequest(name, email string) error {
 	link := s.settings.PublicBaseURL + "/approve?t=" +
 		url.QueryEscape(tokens.MintApproval(s.authSecret, name, email, approvalTTL))
-	return s.mailer.Send(mail.Message{
+	days := int(s.tokenTTL().Hours() / 24)
+	linkDays := int(approvalTTL.Hours() / 24)
+	return s.mailer.Send(withHTML(mail.Message{
 		To:      s.settings.AdminEmail,
 		ReplyTo: email,
 		Subject: "Kilometrix: Token-Antrag von " + name,
 		Body: fmt.Sprintf("Neuer Token-Antrag:\n\nName:  %s\nMail:  %s\n\n"+
 			"Zum Freigeben (%d Tage) diesen Link öffnen und dort bestätigen:\n%s\n\n"+
 			"Zum Ablehnen die Mail einfach ignorieren. Der Link ist %d Tage gültig.\n",
-			name, email, s.settings.TokenDays, link, int(approvalTTL.Hours()/24)),
-	})
+			name, email, days, link, linkDays),
+	}, mailView{
+		Title:  "Neuer Token-Antrag",
+		Intro:  "Jemand hat ein Zugangstoken für Kilometrix beantragt:",
+		Rows:   [][2]string{{"Name", name}, {"Mail", email}},
+		Button: "Token freigeben",
+		URL:    link,
+		Note:   fmt.Sprintf("Das Token ist %d Tage gültig. Zum Ablehnen diese Mail einfach ignorieren. Der Link ist %d Tage gültig.", days, linkDays),
+	}))
 }
 
 // sendToken stellt das Token aus und schickt es an den Antragsteller.
@@ -216,14 +231,23 @@ func (s *Server) sendToken(name, email string) error {
 	ttl := s.tokenTTL()
 	token := tokens.Mint(s.authSecret, name, ttl)
 	until := time.Now().Add(ttl).Format("02.01.2006")
-	return s.mailer.Send(mail.Message{
+	return s.mailer.Send(withHTML(mail.Message{
 		To:      email,
 		Subject: "Dein Kilometrix-Zugangstoken",
 		Body: fmt.Sprintf("Hallo %s,\n\ndein Zugangstoken für Kilometrix (gültig bis %s):\n\n%s\n\n"+
 			"So geht's:\n1. Excel öffnen und das Kilometrix-Add-in starten.\n"+
 			"2. Das Token im Feld „Zugang“ einfügen und auf „Verbinden“ klicken.\n\n"+
 			"Bitte das Token nicht weitergeben.\n", name, until, token),
-	})
+	}, mailView{
+		Title: "Dein Zugangstoken",
+		Intro: "Hallo " + name + ", dein Zugangstoken für Kilometrix ist gültig bis " + until + ":",
+		Code:  token,
+		Steps: []string{
+			"Excel öffnen und das Kilometrix-Add-in starten.",
+			"Das Token im Feld „Zugang“ einfügen und auf „Verbinden“ klicken.",
+		},
+		Note: "Bitte das Token nicht weitergeben.",
+	}))
 }
 
 // --- Freigabe durch den Admin -------------------------------------------------------
@@ -235,6 +259,7 @@ var approveTmpl = template.Must(template.New("approve").Parse(`<!doctype html>
 button{font:inherit;padding:.7rem 1.2rem;border:0;border-radius:.5rem;background:#0b5fff;color:#fff;width:100%}
 dl{margin:1rem 0}dt{color:#667;font-size:.85rem}dd{margin:0 0 .6rem;font-weight:600;word-break:break-all}
 @media(prefers-color-scheme:dark){body{background:#14171c;color:#e8eaed}}</style></head><body>
+<img src="/logo.png" width="48" height="48" alt="" style="border-radius:10px">
 <h1>Token freigeben</h1>
 {{if .Err}}<p>{{.Err}}</p>{{else if .Done}}<p>✅ Token wurde an <b>{{.Email}}</b> gesendet.</p>
 {{else}}<dl><dt>Name</dt><dd>{{.Name}}</dd><dt>Mail</dt><dd>{{.Email}}</dd><dt>Gültigkeit</dt><dd>{{.Days}} Tage</dd></dl>

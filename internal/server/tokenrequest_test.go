@@ -45,6 +45,11 @@ func TestUnknownDomainSendsApprovalToAdmin(t *testing.T) {
 	if rec.Code != 200 || len(fm.sent) != 1 || fm.sent[0].To != "admin@example.de" {
 		t.Fatalf("code %d, mails %+v", rec.Code, fm.sent)
 	}
+	// HTML-Fassung: klickbarer Link + Logo per cid (nicht von html/template als unsicher ersetzt).
+	if h := fm.sent[0].HTML; !strings.Contains(h, `<a href="https://k.example.de/approve?t=`) ||
+		!strings.Contains(h, `src="cid:`+mail.LogoCID+`"`) || strings.Contains(h, "ZgotmplZ") || len(fm.sent[0].Logo) == 0 {
+		t.Fatalf("HTML-Mail unvollständig: %s", h)
+	}
 	if strings.Contains(fm.sent[0].Body, "geheim") {
 		t.Fatal("Secret in Mail")
 	}
