@@ -30,7 +30,7 @@ var mailTmpl = template.Must(template.New("mail").Parse(`<!doctype html>
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr><td align="center">
 <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border:1px solid #d5d9e0;border-radius:12px;">
 <tr><td style="padding:24px 28px 8px 28px;">
-  <img src="{{.LogoSrc}}" width="48" height="48" alt="Kilometrix" style="display:block;border:0;margin-bottom:12px;">
+  <img src="{{.LogoSrc}}" width="48" height="48" alt="Kilometrix" style="display:block;border:0;margin-bottom:24px;">
   <h1 style="margin:0 0 12px 0;font-size:20px;line-height:1.3;">{{.Title}}</h1>
   <p style="margin:0 0 16px 0;font-size:15px;line-height:1.5;">{{.Intro}}</p>
 {{if .Rows}}  <table role="presentation" cellpadding="0" cellspacing="0" style="margin:0 0 16px 0;font-size:15px;">
