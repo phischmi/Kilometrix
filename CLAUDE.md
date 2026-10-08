@@ -79,6 +79,13 @@ Server kopieren. Graph + osrm-routed müssen dieselbe osrm-backend-Version haben
 - Robuste Fehlerbehandlung pro Zeile.
 - Nur Deutschland-Extract: grenznahe Routen über Ausland werden leicht zu lang — bei Bedarf DACH+.
 
+## Token-Antrag (Formular auf `/`)
+Aktiv nur mit `AUTH_ENABLED` + SMTP (`SMTP_*`, `MAIL_FROM`, `ADMIN_EMAIL`, `PUBLIC_BASE_URL`), sonst
+Redirect zum Add-in. Zustandslos: Freigabe-Link = HMAC-signierter Antrag
+([`tokens/approval.go`](internal/tokens/approval.go), eigene Signatur-Domäne), Freigabe erst per POST
+(Mail-Scanner!). Versand über stdlib-SMTP ([`internal/mail`](internal/mail), z. B. Brevo-Relay).
+`ALLOWED_EMAIL_DOMAINS` = Auto-Freigabe. Handler: [`server/tokenrequest.go`](internal/server/tokenrequest.go).
+
 ## Projektstruktur
 ```
 .

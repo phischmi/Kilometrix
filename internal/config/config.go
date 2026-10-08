@@ -43,6 +43,17 @@ type Settings struct {
 	AuthEnabled bool
 	AuthSecret  string
 
+	// Token-Antrag (Formular auf "/"): benötigt SMTP + ADMIN_EMAIL + PUBLIC_BASE_URL.
+	SMTPHost       string
+	SMTPPort       string
+	SMTPUser       string
+	SMTPPass       string
+	MailFrom       string
+	AdminEmail     string
+	PublicBaseURL  string   // z. B. https://kilometrix.example.com (für Links in Mails)
+	AllowedDomains []string // Mail-Domains, die ohne Freigabe ein Token erhalten
+	TokenDays      int      // Gültigkeit ausgestellter Tokens in Tagen
+
 	// Backend / Office.js-Add-in (HTTPS)
 	AddinHost string
 	AddinPort int
@@ -76,26 +87,35 @@ func Load() Settings {
 	return Settings{
 		OSRMGraphPath:       getStr("OSRM_GRAPH_PATH", "data/germany.osrm"),
 		OSRMAlgorithm:       getStr("OSRM_ALGORITHM", "MLD"),
-		OSRMRoutedBin:          getStr("OSRM_ROUTED_BIN", "osrm-routed"),
-		OSRMRoutedHost:         getStr("OSRM_ROUTED_HOST", "127.0.0.1"),
-		OSRMRoutedPort:         getInt("OSRM_ROUTED_PORT", 5001),
-		ManageOSRMRouted:       getBool("MANAGE_OSRM_ROUTED", true),
-		OSRMRoutedURL:          getStr("OSRM_ROUTED_URL", ""),
-		OSRMRoutedVerbosity:    getStr("OSRM_ROUTED_VERBOSITY", "INFO"),
+		OSRMRoutedBin:       getStr("OSRM_ROUTED_BIN", "osrm-routed"),
+		OSRMRoutedHost:      getStr("OSRM_ROUTED_HOST", "127.0.0.1"),
+		OSRMRoutedPort:      getInt("OSRM_ROUTED_PORT", 5001),
+		ManageOSRMRouted:    getBool("MANAGE_OSRM_ROUTED", true),
+		OSRMRoutedURL:       getStr("OSRM_ROUTED_URL", ""),
+		OSRMRoutedVerbosity: getStr("OSRM_ROUTED_VERBOSITY", "INFO"),
 		// mmap mappt den Graph von der Platte statt ihn komplett ins RAM zu laden:
 		// spart Arbeitsspeicher im Leerlauf (wichtig auf RAM-knappen Servern), erste
 		// Abfrage minimal langsamer. Default an.
 		OSRMRoutedMmap:         getBool("OSRM_ROUTED_MMAP", true),
 		OSRMRoutedReadyTimeout: getInt("OSRM_ROUTED_READY_TIMEOUT", 0),
-		GeocodePath:         getStr("GEOCODE_PATH", "data/plz_centroids.csv"),
-		Workers:             getInt("WORKERS", 8),
-		SnapLimitM:          getFloat("SNAP_LIMIT_M", 100.0),
-		MaxSyncBatch:        getInt("MAX_SYNC_BATCH", 20000),
-		AuthEnabled:         getBool("AUTH_ENABLED", false),
-		AuthSecret:          getStr("AUTH_SECRET", ""),
-		AddinHost:           getStr("ADDIN_HOST", "127.0.0.1"),
-		AddinPort:           getInt("ADDIN_PORT", 8443),
-		AddinDir:            getStr("ADDIN_DIR", "addin"),
+		GeocodePath:            getStr("GEOCODE_PATH", "data/plz_centroids.csv"),
+		Workers:                getInt("WORKERS", 8),
+		SnapLimitM:             getFloat("SNAP_LIMIT_M", 100.0),
+		MaxSyncBatch:           getInt("MAX_SYNC_BATCH", 20000),
+		AuthEnabled:            getBool("AUTH_ENABLED", false),
+		AuthSecret:             getStr("AUTH_SECRET", ""),
+		SMTPHost:               getStr("SMTP_HOST", ""),
+		SMTPPort:               getStr("SMTP_PORT", "587"),
+		SMTPUser:               getStr("SMTP_USER", ""),
+		SMTPPass:               getStr("SMTP_PASS", ""),
+		MailFrom:               getStr("MAIL_FROM", ""),
+		AdminEmail:             getStr("ADMIN_EMAIL", ""),
+		PublicBaseURL:          strings.TrimRight(getStr("PUBLIC_BASE_URL", ""), "/"),
+		AllowedDomains:         getList("ALLOWED_EMAIL_DOMAINS"),
+		TokenDays:              getInt("TOKEN_DAYS", 90),
+		AddinHost:              getStr("ADDIN_HOST", "127.0.0.1"),
+		AddinPort:              getInt("ADDIN_PORT", 8443),
+		AddinDir:               getStr("ADDIN_DIR", "addin"),
 	}
 }
 
@@ -158,6 +178,17 @@ func getInt(key string, def int) int {
 		}
 	}
 	return def
+}
+
+// getList liest eine kommagetrennte Liste (klein geschrieben, ohne Leerzeichen/Leereinträge).
+func getList(key string) []string {
+	var out []string
+	for _, p := range strings.Split(os.Getenv(key), ",") {
+		if p = strings.ToLower(strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(p), "@"))); p != "" {
+			out = append(out, p)
+		}
+	}
+	return out
 }
 
 func getFloat(key string, def float64) float64 {

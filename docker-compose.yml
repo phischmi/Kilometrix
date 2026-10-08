@@ -32,6 +32,17 @@ services:
       GEOCODE_PATH: "/data/plz_centroids.csv"
       AUTH_ENABLED: "true"
       AUTH_SECRET: "${AUTH_SECRET:?AUTH_SECRET muss in .env gesetzt sein}"
+      # Token-Antrag (Formular auf "/"): aktiv, sobald SMTP_HOST, MAIL_FROM, ADMIN_EMAIL und
+      # PUBLIC_BASE_URL gesetzt sind (Werte in .env). Sonst leitet "/" direkt zum Add-in.
+      SMTP_HOST: "${SMTP_HOST:-}"
+      SMTP_PORT: "${SMTP_PORT:-587}"
+      SMTP_USER: "${SMTP_USER:-}"
+      SMTP_PASS: "${SMTP_PASS:-}"
+      MAIL_FROM: "${MAIL_FROM:-}"
+      ADMIN_EMAIL: "${ADMIN_EMAIL:-}"
+      PUBLIC_BASE_URL: "https://${KILOMETRIX_HOST:-kilometrix.example.com}"
+      ALLOWED_EMAIL_DOMAINS: "${ALLOWED_EMAIL_DOMAINS:-}"
+      TOKEN_DAYS: "${TOKEN_DAYS:-90}"
     volumes:
       # Der Geocoder laeuft im app-Container und braucht Zugriff auf plz_centroids.csv.
       - ./data:/data:ro

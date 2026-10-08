@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Kilometrix – Zugang beantragen</title>
+<style>
+  :root{--bg:#f6f7f9;--card:#fff;--fg:#1b1f24;--muted:#667085;--line:#d5d9e0;--accent:#0b5fff;--ok:#0a7a3d;--err:#b42318}
+  @media(prefers-color-scheme:dark){:root{--bg:#14171c;--card:#1c2027;--fg:#e8eaed;--muted:#9aa3b2;--line:#323843;--accent:#4d8dff;--ok:#4cc38a;--err:#ff8a80}}
+  *{box-sizing:border-box}
+  body{margin:0;min-height:100vh;display:grid;place-items:center;padding:1rem;background:var(--bg);color:var(--fg);font:16px/1.5 system-ui,sans-serif}
+  main{width:100%;max-width:26rem;background:var(--card);border:1px solid var(--line);border-radius:.75rem;padding:1.5rem}
+  h1{margin:0 0 .25rem;font-size:1.35rem}
+  p{margin:.25rem 0 1rem;color:var(--muted)}
+  label{display:block;margin:.75rem 0 .25rem;font-size:.9rem}
+  input{width:100%;font:inherit;padding:.6rem .7rem;border:1px solid var(--line);border-radius:.5rem;background:transparent;color:inherit}
+  input:focus{outline:2px solid var(--accent);outline-offset:1px}
+  button{margin-top:1.1rem;width:100%;font:inherit;padding:.7rem;border:0;border-radius:.5rem;background:var(--accent);color:#fff;cursor:pointer}
+  button:disabled{opacity:.6;cursor:default}
+  #msg{min-height:1.5rem;margin-top:.9rem;font-size:.95rem}
+  .ok{color:var(--ok)}.err{color:var(--err)}
+  small{display:block;margin-top:1rem;color:var(--muted);font-size:.8rem}
+  .hp{position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden}
+</style>
+</head>
+<body>
+<main>
+  <h1>Kilometrix</h1>
+  <p>Excel-Add-in zur Berechnung von Straßenkilometern. Für die Nutzung brauchst du ein Zugangstoken.</p>
+  <form id="f" novalidate>
+    <label for="name">Name</label>
+    <input id="name" name="name" autocomplete="name" required maxlength="100">
+    <label for="email">E-Mail</label>
+    <input id="email" name="email" type="email" autocomplete="email" required maxlength="254">
+    <div class="hp" aria-hidden="true"><label>Website <input name="website" id="website" tabindex="-1" autocomplete="off"></label></div>
+    <button id="btn" type="submit">Token beantragen</button>
+    <div id="msg" role="status" aria-live="polite"></div>
+  </form>
+  <small>Name und Mailadresse werden nur zur Bearbeitung des Antrags per Mail verwendet und nicht gespeichert.</small>
+</main>
+<script>
+const f=document.getElementById('f'),msg=document.getElementById('msg'),btn=document.getElementById('btn');
+f.addEventListener('submit',async e=>{
+  e.preventDefault();
+  msg.className='';msg.textContent='';
+  if(!f.reportValidity())return;
+  btn.disabled=true;
+  try{
+    const r=await fetch('/request-token',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({name:f.name.value,email:f.email.value,website:f.website.value})});
+    const j=await r.json().catch(()=>({}));
+    if(r.ok){msg.className='ok';msg.textContent='Danke! Dein Antrag ist eingegangen. Du erhältst das Token per Mail, sobald er freigegeben ist.';f.reset();}
+    else{msg.className='err';msg.textContent=j.detail||'Fehler beim Senden.';btn.disabled=false;}
+  }catch(_){msg.className='err';msg.textContent='Keine Verbindung zum Server.';btn.disabled=false;}
+});
+</script>
+</body>
+</html>
